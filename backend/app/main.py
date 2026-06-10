@@ -1,20 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 import warnings
+import asyncio
 
-# ── Suppress noisy third-party warnings ───────────────────────
 warnings.filterwarnings("ignore", category=FutureWarning)
 logging.getLogger("transformers").setLevel(logging.ERROR)
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("yfinance").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-# ── Clean logging format ───────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
@@ -23,20 +21,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 from app.api import stocks, news, sentiment, macro
-from app.core.database import engine, Base
+from app.core.database import engine, init_db
 from app.services.scheduler import start_scheduler, stop_scheduler
+
+_db_ready = False
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _db_ready
+
     logger.info("━" * 55)
     logger.info("  SMSA  Stock Market Sentiment Analyzer — Starting")
     logger.info("━" * 55)
-    async with engine.begin() as conn:
-        await conn.run_sync(lambda c: Base.metadata.create_all(c, checkfirst=True))
-    logger.info("  [1/3]  Database connected ✓")
+
+    await init_db()
+    _db_ready = True
+    logger.info("  [1/3]  Database ready ✓")
+
     await start_scheduler()
+
     yield
+
     await stop_scheduler()
     await engine.dispose()
     logger.info("  Shutdown complete.")
@@ -46,7 +52,21 @@ app = FastAPI(
     title="Stock Market Sentiment Analyzer",
     version="1.0.0",
     docs_url="/docs",
+    lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def ensure_db_ready(request: Request, call_next):
+    """Block all requests until DB tables are created."""
+    global _db_ready
+    if not _db_ready and request.url.path not in ("/health", "/docs", "/openapi.json"):
+        for _ in range(30):
+            if _db_ready:
+                break
+            await asyncio.sleep(1)
+    return await call_next(request)
+
 
 app.add_middleware(
     CORSMiddleware,

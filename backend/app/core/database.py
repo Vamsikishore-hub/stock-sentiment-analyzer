@@ -21,6 +21,13 @@ class Base(DeclarativeBase):
     pass
 
 
+async def init_db():
+    """Create all tables. Imports model classes to register them with Base."""
+    from app.models.models import StockPrice, NewsArticle, StockSentiment, MacroEvent  # noqa
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
 async def get_db():
     async with AsyncSessionLocal() as session:
         try:
