@@ -1,0 +1,136 @@
+.stock-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fade-in 0.3s ease forwards;
+}
+
+.stock-card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-1px);
+}
+
+.stock-card--bullish { border-left: 3px solid var(--bullish); }
+.stock-card--bearish { border-left: 3px solid var(--bearish); }
+.stock-card--neutral { border-left: 3px solid var(--neutral); }
+
+/* Header */
+.sc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sc-symbol {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-accent);
+  letter-spacing: 0.05em;
+}
+
+.sc-signal {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--font-display);
+}
+
+.sc-signal--buy { background: var(--bullish-dim); color: var(--bullish); }
+.sc-signal--sell { background: var(--bearish-dim); color: var(--bearish); }
+.sc-signal--hold { background: var(--neutral-dim); color: var(--neutral); }
+
+/* Price */
+.sc-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.sc-price {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sc-change {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Sentiment */
+.sc-sentiment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sc-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sc-badge--bullish { background: var(--bullish-dim); color: var(--bullish); }
+.sc-badge--bearish { background: var(--bearish-dim); color: var(--bearish); }
+.sc-badge--neutral { background: var(--neutral-dim); color: var(--neutral); }
+
+.sc-score {
+  font-size: 0.75rem;
+}
+
+/* Sentiment bar */
+.sentiment-bar-track {
+  position: relative;
+  height: 4px;
+  background: var(--bg-input);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.sentiment-bar-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--border-bright);
+}
+
+.sentiment-bar-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* Reasoning */
+.sc-reasoning {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  border-left: 2px solid var(--border-bright);
+  padding-left: 8px;
+  font-style: italic;
+}
+
+/* Footer */
+.sc-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  margin-top: 2px;
+}

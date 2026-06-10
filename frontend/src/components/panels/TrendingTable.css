@@ -1,0 +1,96 @@
+.trending-table {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.tt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tt-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+.tt-sub {
+  font-size: 0.72rem;
+}
+
+.tt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.tt-table thead tr {
+  border-bottom: 1px solid var(--border);
+}
+
+.tt-table th {
+  padding: 8px 16px;
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.tt-row {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.tt-row:last-child { border-bottom: none; }
+.tt-row:hover { background: var(--bg-card-hover); }
+
+.tt-table td {
+  padding: 10px 16px;
+  vertical-align: middle;
+}
+
+.tt-rank { color: var(--text-muted); font-size: 0.75rem; }
+.tt-symbol { font-weight: 600; color: var(--text-accent); }
+.tt-score { font-size: 0.78rem; }
+.tt-mentions { font-size: 0.78rem; }
+
+.tt-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+}
+
+.tt-badge--bullish { background: var(--bullish-dim); color: var(--bullish); }
+.tt-badge--bearish { background: var(--bearish-dim); color: var(--bearish); }
+.tt-badge--neutral { background: var(--neutral-dim); color: var(--neutral); }
+
+.tt-signal {
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.tt-signal--buy { background: var(--bullish-dim); color: var(--bullish); }
+.tt-signal--sell { background: var(--bearish-dim); color: var(--bearish); }
+.tt-signal--hold { background: var(--neutral-dim); color: var(--neutral); }
+
+.tt-empty {
+  text-align: center;
+  padding: 32px;
+  font-size: 0.8rem;
+}
