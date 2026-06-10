@@ -4,11 +4,9 @@ from typing import List
 
 
 class Settings(BaseSettings):
-    # API Keys
     newsapi_key: str
     alpha_vantage_key: str = "your_alpha_vantage_key_here"
 
-    # Database
     postgres_user: str = "stockuser"
     postgres_password: str = "stockpass"
     postgres_db: str = "stocksentiment"
@@ -29,11 +27,6 @@ class Settings(BaseSettings):
     tracked_stocks: List[str] = [
         "AAPL", "GOOGL", "META", "AMZN", "NFLX",
         "TSLA", "MSFT", "NVDA", "AMD", "ORCL"
-    ]
-
-    reddit_feeds: List[str] = [
-        "https://www.reddit.com/r/stocks/new.json?limit=50",
-        "https://www.reddit.com/r/wallstreetbets/new.json?limit=50",
     ]
 
     class Config:

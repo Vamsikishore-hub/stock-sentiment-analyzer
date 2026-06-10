@@ -2,7 +2,7 @@ import httpx
 import asyncio
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
@@ -11,11 +11,6 @@ from app.models.models import NewsArticle
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-REDDIT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "application/json",
-}
 
 # Company name → ticker mapping for smart matching
 COMPANY_NAMES = {
@@ -39,14 +34,12 @@ COMPANY_NAMES = {
               "larry ellison", "oracle erp", "java oracle"],
 }
 
-# Noise domains — articles from these are rarely about stock fundamentals
 NOISE_DOMAINS = [
     "pypi.org", "softpedia.com", "slickdeals.net", "rlsbb.to",
     "drivers.softpedia.com", "github.com", "stackoverflow.com",
-    "reddit.com/r/programming", "hackernews",
+    "hackernews",
 ]
 
-# Financial context keywords — article should contain at least one
 FINANCIAL_CONTEXT = [
     "stock", "share", "earnings", "revenue", "profit", "loss", "quarter",
     "market", "investor", "analyst", "forecast", "guidance", "valuation",
@@ -61,67 +54,49 @@ FINANCIAL_CONTEXT = [
 
 
 def _is_noise_source(url: str) -> bool:
-    """Check if the article is from a known noise domain."""
     if not url:
         return False
     return any(domain in url.lower() for domain in NOISE_DOMAINS)
 
 
 def _has_financial_context(text: str) -> bool:
-    """Check if the article has at least some financial relevance."""
     text_lower = text.lower()
     return any(kw in text_lower for kw in FINANCIAL_CONTEXT)
 
 
 def _extract_symbols_smart(title: str, description: str, url: str) -> str:
-    """
-    Smart symbol extraction:
-    1. Skip noise sources entirely
-    2. Require financial context
-    3. Match $TICKER, ticker as standalone word, OR company name
-    4. Require the match to be in title OR prominently in description
-    """
     if _is_noise_source(url):
         return ""
 
     combined_text = f"{title} {description or ''}".lower()
     title_lower = title.lower()
 
-    # Must have financial context somewhere in the article
     if not _has_financial_context(combined_text):
         return ""
 
     found = []
-
     for symbol in settings.tracked_stocks:
         matched = False
 
-        # 1. Exact ticker match: $AAPL or standalone AAPL (not part of another word)
-        # Must appear in title for high confidence
         ticker_pattern = r'(?<![A-Z$])' + re.escape(symbol) + r'(?![A-Z])'
         dollar_pattern = r'\$' + re.escape(symbol) + r'\b'
 
         if re.search(dollar_pattern, title, re.IGNORECASE):
-            matched = True  # $AAPL in title = definite match
+            matched = True
         elif re.search(ticker_pattern, title):
-            matched = True  # AAPL standalone in title = strong match
+            matched = True
 
-        # 2. Company name match in title
         if not matched:
-            company_names = COMPANY_NAMES.get(symbol, [])
-            for name in company_names:
+            for name in COMPANY_NAMES.get(symbol, []):
                 if name in title_lower:
                     matched = True
                     break
 
-        # 3. Company name in description (weaker — only if financial context strong)
         if not matched and description:
             desc_lower = description.lower()
-            company_names = COMPANY_NAMES.get(symbol, [])
-            # Count financial keywords — need at least 2 for description-only match
             financial_hits = sum(1 for kw in FINANCIAL_CONTEXT if kw in combined_text)
             if financial_hits >= 2:
-                for name in company_names:
+                for name in COMPANY_NAMES.get(symbol, []):
                     if name in desc_lower:
                         matched = True
                         break
@@ -132,13 +107,9 @@ def _extract_symbols_smart(title: str, description: str, url: str) -> str:
     return ",".join(found)
 
 
-async def fetch_newsapi_articles() -> List[Dict]:
+async def fetch_all_news() -> List[Dict]:
+    """Fetch financial headlines from NewsAPI only."""
     articles = []
-    query = " OR ".join(
-        [f'"{s}"' for s in settings.tracked_stocks] +
-        [f'"{name}"' for names in COMPANY_NAMES.values() for name in names[:2]]
-    )
-    # Simpler query that works better with NewsAPI
     query = " OR ".join([
         "Apple stock", "Google Alphabet", "Meta Platforms", "Amazon AWS",
         "Netflix earnings", "Tesla stock", "Microsoft Azure",
@@ -192,59 +163,8 @@ async def fetch_newsapi_articles() -> List[Dict]:
     except Exception as e:
         logger.error(f"NewsAPI fetch error: {e}")
 
+    logger.info(f"Smart filter: kept {len(articles)} relevant articles")
     return articles
-
-
-async def fetch_reddit_posts() -> List[Dict]:
-    posts = []
-    async with httpx.AsyncClient(timeout=20, headers=REDDIT_HEADERS, follow_redirects=True) as client:
-        for feed_url in settings.reddit_feeds:
-            try:
-                resp = await client.get(feed_url)
-                if resp.status_code == 403:
-                    logger.warning(f"Reddit 403 for {feed_url} — skipping")
-                    continue
-                resp.raise_for_status()
-                data = resp.json()
-
-                for item in data.get("data", {}).get("children", []):
-                    post = item.get("data", {})
-                    title = post.get("title") or ""
-                    selftext = post.get("selftext") or ""
-                    url = f"https://reddit.com{post.get('permalink', '')}"
-
-                    symbols = _extract_symbols_smart(title, selftext, url)
-                    if not symbols:
-                        continue
-
-                    created_utc = post.get("created_utc")
-                    published_at = None
-                    if created_utc:
-                        published_at = datetime.fromtimestamp(created_utc, tz=timezone.utc)
-
-                    posts.append({
-                        "title": title[:400],
-                        "description": selftext[:500] if selftext else None,
-                        "url": url,
-                        "source": post.get("subreddit_name_prefixed", "r/unknown"),
-                        "published_at": published_at,
-                        "related_symbols": symbols,
-                        "is_reddit": True,
-                    })
-            except Exception as e:
-                logger.error(f"Reddit fetch error for {feed_url}: {e}")
-
-    return posts
-
-
-async def fetch_all_news() -> List[Dict]:
-    newsapi, reddit = await asyncio.gather(
-        fetch_newsapi_articles(),
-        fetch_reddit_posts(),
-    )
-    all_articles = newsapi + reddit
-    logger.info(f"Smart filter: kept {len(all_articles)} relevant articles")
-    return all_articles
 
 
 async def save_articles(db: AsyncSession, articles: List[Dict]) -> int:
